@@ -1,0 +1,49 @@
+%% Operators
+X = [0 1; 1 0];
+Z = [1 0; 0 -1];
+Y = [0 -1i; 1i 0];
+I = eye(2);
+
+%% Define Hamiltonians
+
+%%
+%1- X1+X2+X3+Z1+Z2+Z3
+H = kron(X, eye(4)) + kron(I, kron(X,I)) + kron(eye(4),X) + kron(Z, eye(4)) + kron(I, kron(Z,I)) + kron(eye(4),Z);
+
+%%
+%2- X1X2+X2X3+X3X1
+H = kron(X,kron(X,I)) + kron(X, kron(I, X)) + kron(I, kron(X,X));
+
+%%
+%3- X1X2+X2X3+X3X1+X2X4+X4X1
+H = kron(X,kron(X, eye(4))) + kron(I, kron(X,kron(X,I))) + kron(X, kron(I,kron(X,I))) + kron(I, kron(X,kron(I,X))) + kron(X, kron(eye(4),X));
+
+%%
+%4- X1X2+X2X3+X3X4+X4X1+X5X6+X6X7+X7X8+X8X1+X9X10+X10X11+X11X12+X12X9+X1X5
+% +X5X9+X9X1+X2X6+X6X10+X10X2+X3X7+X7X11+X11X3+X4X8+X8X12+X12X4
+H = kron(kron(X,X),eye(1024)) + kron(I, kron(X, kron(X, eye(512)))) + kron(eye(4), kron(X, kron(X, eye(256)))) + kron(X, kron(eye(4),kron(X, eye(256))));
+H = H + kron(eye(16), kron(X, kron(X, eye(64)))) + kron(eye(32), kron(X, kron(X, eye(32)))) + kron(X, kron(eye(64),kron(X, eye(16)))) + kron(eye(256), kron(X, kron(X, eye(4))));
+H = H + kron(eye(512), kron(X, kron(X, I))) + kron(eye(1024), kron(X, X)) + kron(eye(256), kron(X, kron(eye(4), X))) + kron(X, kron(eye(8) , kron(X, eye(128))));
+H = H + kron(eye(16), kron(X , kron(eye(8), kron(X, eye(8))))) + kron(X, kron(eye(128),kron(X, eye(8)))) + kron(I, kron(X, kron(eye(8), kron(X, eye(64))))) + kron(eye(32), kron(X, kron(eye(8), kron(X, eye(4)))));
+H = H + kron(I, kron(X, kron(eye(128), kron(X, eye(4))))) + kron(eye(4), kron(X, kron(eye(8), kron(X, eye(32))))) + kron(eye(64), kron(X, kron(eye(8), kron(X, I)))) ; 
+H = H + kron(eye(4), kron(X, kron(eye(128), kron(X, I)))) + kron(eye(8), kron(X, kron(eye(8), kron(X, eye(16))))) + kron(eye(128), kron(X, kron(eye(8), X))) + kron(eye(8), kron(X, kron(eye(128), X)));
+%%
+dim = length(H);
+% Ps are a struct of all the permutation matrices. DPs are a struct of all
+% diagonal times the corresponding permutation D_i P_i s.
+[Ps , DPs] = Pextractor(H);
+
+% This converts the index of Ps into the corresponding index that is
+% associated with the binary vector
+[Plist , convlist] = porg(Ps); 
+
+%% Making binary vector of Ps
+no_of_ps = length(Ps);
+plist_bin = zeros(no_of_ps,int32(log2(dim))); %initializing binary vector
+
+for i = 1:no_of_ps
+    array = baseconv(Plist(i) , 2);
+    p = length(array);
+    plist_bin(i,end-p+1:end) = array; % plist in binary form!
+end
+null_eigs = null2(plist_bin');

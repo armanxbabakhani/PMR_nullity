@@ -1,0 +1,78 @@
+% Let's write a code that takes in linear combinations of local qubit
+% operators and generates a list of permutations!
+
+%% The Hamiltonian: Reading in the text file
+
+data = file_extract('heis6_rotated.txt');
+%% Computing Ps
+
+[Ps , Zs , no_qubit] = PZcomp(data);
+%%
+Ps_binary = baseconv(Ps(end),2);
+if ~isa(Zs, 'cell')
+    Zs = {Zs};
+end
+lbin = size(Ps_binary , 2);
+for i=1:length(Ps)-1
+    pi = baseconv(Ps(end-i),2);
+    l = lbin - size(pi,2);
+    Ps_binary = [[zeros(1,l) , pi] ; Ps_binary];
+end
+%% Applying Unitary Transformations
+% U2 = [1 0 0 0; 0 1/sqrt(2) -1/sqrt(2) 0; 0 1/sqrt(2) 1/sqrt(2) 0; 0 0 0 1];
+% Unitary = kron(I, kron(U2, I));
+% 
+% [U_Ps , U_DPs] = allperms(Unitary);
+% [U_plist, U_conv] = porg(U_Ps);
+%% Building the rotated Permutations:
+
+%% Making binary vector of Ps
+if Ps(1) == 0
+    Ps_nontrivial = Ps(2:end);
+else 
+    Ps_nontrivial = Ps;
+end
+[null_eigs , k] = find_eigs(Ps_nontrivial , no_qubit);
+
+%% Minimizing the eigenvectors
+
+null_eigs_min = eig_minimize(null_eigs);
+
+%% Write output file
+
+fileID = fopen('heis6_rotated_output.txt' , 'w');
+% fprintf(fileID, '%6s\n' , 'The permutation indices with diagonal elements right below them:');
+n_cols = lbin;
+% format_string = '\n';
+% for i=1:n_cols
+%     format_string = ['%6i' , format_string];
+% end
+for j=1:size(Ps_binary,1)
+     fprintf(fileID, '%8i \n' , Ps(j));
+     fprintf(fileID, '-------------------- \n');
+%     fprintf(fileID, format_string , Ps_binary(j,:));
+    for s=1:length(Zs{j}{1})
+        format_string_zz = '\n';
+        for t = 1:length(Zs{j}{2}{s})
+            format_string_zz = ['%6i ' , format_string_zz];
+        end
+        if isequal(real(Zs{j}{1}{s}) , Zs{j}{1}{s})
+            fprintf(fileID , '%8f  ' , Zs{j}{1}{s});
+        else
+            fprintf(fileID , '%2f + %2f j' , [real(Zs{j}{1}{s}) , imag(Zs{j}{1}{s})]);
+        end
+        fprintf(fileID , format_string_zz , Zs{j}{2}{s});
+    end
+    fprintf(fileID , '\n');
+end
+
+% Writing nullity and nullspace span:
+fprintf(fileID, '%6s\n' , 'The nullity is: ');
+fprintf(fileID, '%6i\n' , k);
+fprintf(fileID, '%6s\n' , 'The minimal nullspace eigenvectors (fundamental cycles):');
+for i = 1:size(null_eigs_min,2)
+    fprintf(fileID, '%6i %8s\n\n' , i , 'th eigenvector');
+    fprintf(fileID, '%4i\n' , null_eigs_min(:,i));
+    fprintf(fileID, '\n');
+end
+fclose(fileID);
